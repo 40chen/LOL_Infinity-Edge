@@ -1,0 +1,16 @@
+[settings]
+platformio_assets_dir = %USERPROFILE%\.platformio
+enable_telemetry = No
+# 以下配置将下载源改为国内阿里云镜像
+board_manager =
+    https://mirrors.aliyun.com/platformio/boards/
+package_index =
+    https://mirrors.aliyun.com/platformio/packages/manifest.json
+frameworks_index =
+    https://mirrors.aliyun.com/platformio/frameworks/manifest.json
+tool_index =
+    https://mirrors.aliyun.com/platformio/tools/manifest.json
+platforms_index =
+    https://mirrors.aliyun.com/platformio/platforms/manifest.json
+libraries_index =
+    https://mirrors.aliyun.com/platformio/libraries/manifest.json
