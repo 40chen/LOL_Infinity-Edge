@@ -1,14 +1,14 @@
 #include <Arduino.h>
-#include "./app/SaberController.h"
+#include "core/SystemController.h"
 
-SaberController saber;
+// 系统协调器 - 负责所有子系统的初始化和事件循环
+Core::SystemController saberSystem;
 
 void setup() {
-  saber.begin();
+  saberSystem.begin();
 }
 
 void loop() {
-  saber.update();
+  saberSystem.update();
 }
-
 
