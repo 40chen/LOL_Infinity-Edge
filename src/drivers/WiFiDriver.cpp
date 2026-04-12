@@ -25,7 +25,6 @@ void WiFiDriver::begin() {
     Serial.println(macToString(info.wifi_ap_stadisconnected.mac));
   }, WiFiEvent_t::ARDUINO_EVENT_WIFI_AP_STADISCONNECTED);
 
-
   // Ensure AP mode is enabled before starting the AP
   WiFi.enableAP(true); 
   if (!WiFi.softAP(ssid, password)) {

@@ -24,37 +24,31 @@ void SystemController::begin() {
   audio.begin();
   wifi.begin();
 
+  Serial.println("Initializing service layer...");
+  // 初始化服务层 - 服务层使用驱动程序
+  imuService.begin(&imu);
+  ledService.begin(&led);
+  audioService.begin(&audio);
+
   Serial.println("Initializing application layer...");
-  saber.begin(&imu, &led, &audio, &effects);
+  // 应用层通过服务层访问驱动程序
+  saber.begin(&imuService, &ledService, &audioService);
 
   Serial.println("Setting up HTTP API endpoints...");
-  // Initialize Web API with callbacks to control the saber
-  webAPI.begin(&server,
-    // Callback: set saber state
-    [this](bool state) { saber.setState(state); },
-
-    // Callback: get current saber state
-    [this]() { return saber.getState(); },
-
-    // Callback: set LED color
-    [this](uint8_t r, uint8_t g, uint8_t b) { led.setColor(r, g, b); },
-
-    // Callback: get IMU acceleration data
-    [this](float& x, float& y, float& z) {
-      x = imu.getAx() / 2048.0f;
-      y = imu.getAy() / 2048.0f;
-      z = imu.getAz() / 2048.0f;
-    });
+  // Initialize Web API with direct object references
+  webAPI.begin(&server, &saber, &led, &imu);
 
   Serial.println("===== System initialized successfully =====\n");
 }
 
+// Main loop: handle events and update state
 void SystemController::update() {
+
   // Handle incoming HTTP requests (non-blocking)
   server.handleClient();
 
-  // Update application logic (motion detection, state management)
-  saber.update();
+  // Update saber logic (gestures, effects, etc.)
+  saber.tick();
 }
 
 }  // namespace Core

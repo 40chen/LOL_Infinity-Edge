@@ -1,18 +1,19 @@
 #include "WebAPIController.h"
+#include "../app/SaberController.h"
+#include "../drivers/LedDriver.h"
+#include "../drivers/ImuDriver.h"
 #include <Arduino.h>
 
-WebAPIController::WebAPIController() : server(nullptr) {}
+WebAPIController::WebAPIController() : server(nullptr), saber(nullptr), led(nullptr), imu(nullptr) {}
 
 void WebAPIController::begin(WebServer* webServer,
-                            std::function<void(bool)> saberStateSetter,
-                            std::function<bool()> saberStateGetter,
-                            std::function<void(uint8_t, uint8_t, uint8_t)> ledColorSetter,
-                            std::function<void(float&, float&, float&)> imuDataGetter) {
+                            SaberController* saberController,
+                            LedDriver* ledDriver,
+                            ImuDriver* imuDriver) {
   server = webServer;
-  this->saberStateSetter = saberStateSetter;
-  this->saberStateGetter = saberStateGetter;
-  this->ledColorSetter = ledColorSetter;
-  this->imuDataGetter = imuDataGetter;
+  saber = saberController;
+  led = ledDriver;
+  imu = imuDriver;
   
   // Register all HTTP routes
   server->on("/", HTTP_GET, [this]() { handleRoot(); });
@@ -29,24 +30,24 @@ void WebAPIController::begin(WebServer* webServer,
 }
 
 void WebAPIController::handleRoot() {
-  bool saberState = saberStateGetter ? saberStateGetter() : false;
+  bool saberState = saber ? saber->getState() : false;
   server->send(200, "text/html", generateHTML(saberState));
 }
 
 void WebAPIController::switchState() {
-  if (saberStateGetter && saberStateSetter) {
-    bool currentState = saberStateGetter();
-    saberStateSetter(!currentState);
+  if (saber) {
+    bool currentState = saber->getState();
+    saber->setState(!currentState);
     
     String response = "{\"success\":true,\"newState\":" + String(!currentState ? "true" : "false") + "}";
     server->send(200, "application/json", response);
   } else {
-    server->send(500, "application/json", "{\"error\":\"Saber state setter not configured\"}");
+    server->send(500, "application/json", "{\"error\":\"Saber controller not configured\"}");
   }
 }
 
 void WebAPIController::getStatus() {
-  bool saberState = saberStateGetter ? saberStateGetter() : false;
+  bool saberState = saber ? saber->getState() : false;
   server->send(200, "application/json", generateJSON(saberState));
 }
 
@@ -56,12 +57,12 @@ void WebAPIController::setLedColor() {
     uint8_t g = server->arg("g").toInt();
     uint8_t b = server->arg("b").toInt();
     
-    if (ledColorSetter) {
-      ledColorSetter(r, g, b);
+    if (led) {
+      led->setColor(r, g, b);
       String response = "{\"success\":true,\"color\":{\"r\":" + String(r) + ",\"g\":" + String(g) + ",\"b\":" + String(b) + "}}";
       server->send(200, "application/json", response);
     } else {
-      server->send(500, "application/json", "{\"error\":\"LED setter not configured\"}");
+      server->send(500, "application/json", "{\"error\":\"LED driver not configured\"}");
     }
   } else {
     server->send(400, "application/json", "{\"error\":\"Missing or invalid parameters\"}");
@@ -69,14 +70,16 @@ void WebAPIController::setLedColor() {
 }
 
 void WebAPIController::getIMUData() {
-  if (imuDataGetter) {
-    float x = 0, y = 0, z = 0;
-    imuDataGetter(x, y, z);
+  if (imu) {
+    const auto& accel = imu->getAccel();
+    float x = static_cast<float>(accel.x) / 2048.0f;
+    float y = static_cast<float>(accel.y) / 2048.0f;
+    float z = static_cast<float>(accel.z) / 2048.0f;
     
     String response = "{\"imu\":{\"x\":" + String(x, 2) + ",\"y\":" + String(y, 2) + ",\"z\":" + String(z, 2) + "}}";
     server->send(200, "application/json", response);
   } else {
-    server->send(500, "application/json", "{\"error\":\"IMU getter not configured\"}");
+    server->send(500, "application/json", "{\"error\":\"IMU driver not configured\"}");
   }
 }
 

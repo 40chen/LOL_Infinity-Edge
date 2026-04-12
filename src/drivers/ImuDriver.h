@@ -14,17 +14,31 @@ public:
   float getGyroMagnitude();
 
   // 原始数据（可选）
-  int16_t getAx() const { return ax; }
-  int16_t getAy() const { return ay; }
-  int16_t getAz() const { return az; }
+  int16_t getAx() const { return accel.x; }
+  int16_t getAy() const { return accel.y; }
+  int16_t getAz() const { return accel.z; }
 
-  int16_t getGx() const { return gx; }
-  int16_t getGy() const { return gy; }
-  int16_t getGz() const { return gz; }
+  int16_t getGx() const { return gyro.x; }
+  int16_t getGy() const { return gyro.y; }
+  int16_t getGz() const { return gyro.z; }
+
+  struct Vector3 {
+    int16_t x = 0;
+    int16_t y = 0;
+    int16_t z = 0;
+  };
+
+  const Vector3& getAccel() const { return accel; }
+  const Vector3& getGyro() const { return gyro; }
 
 private:
-  int16_t ax = 0, ay = 0, az = 0;
-  int16_t gx = 0, gy = 0, gz = 0;
 
+  // 存储加速度数据的结构体
+  Vector3 accel;
+
+  // 存储陀螺仪数据的结构体
+  Vector3 gyro;
+
+  // 上次更新的时间戳（用于控制读取频率）
   unsigned long lastUpdate = 0;
 };

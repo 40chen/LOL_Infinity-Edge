@@ -4,10 +4,12 @@
 #include "../drivers/ImuDriver.h"
 #include "../drivers/LedDriver.h"
 #include "../drivers/SdCardDriver.h"
-#include "../drivers/SaberAudioDriver.h"
+#include "../drivers/AudioDriver.h"
+#include "../services/ImuService.h"
+#include "../services/LedService.h"
+#include "../services/AudioService.h"
 #include "../app/SaberController.h"
 #include "../api/WebAPIController.h"
-#include "../effects/LightEffects.h"
 #include "../../include/config.h"
 #include <WebServer.h>
 
@@ -29,10 +31,12 @@ private:
   ImuDriver imu;
   LedDriver led;
   SdCardDriver sdCard;
-  SaberAudioDriver audio;
+  SelfAudioDriver audio;
 
-  // 效果层 - 视觉效果管理
-  LightEffects effects{led};
+  // 服务层 - 业务逻辑协调
+  ImuService imuService;
+  LedService ledService;
+  AudioService audioService;
 
   // 应用层 - 业务逻辑
   SaberController saber;

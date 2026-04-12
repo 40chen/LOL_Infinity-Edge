@@ -1,6 +1,8 @@
 #pragma once
 
 struct Config {
+      static constexpr int GESTURE_DELAY = 50; // 手势检测防抖延迟（毫秒）
+    static constexpr int HUM_ACTIVATE_DELAY = 2000; // hum激活延迟（毫秒）
   // I2C pins
   static constexpr int I2C_SDA = 1;
   static constexpr int I2C_SCL = 2;
@@ -30,9 +32,11 @@ struct Config {
   static constexpr int PA_ENABLE = 9;
 
   // Thresholds and timeouts
-  static constexpr int SWING_TIMEOUT = 500;
+  static constexpr int SWING_DELAY = 500;
+  static constexpr int SWING_DETECTION_THR = 60;
   static constexpr int SWING_L_THR = 80;
   static constexpr int SWING_THR = 180;
+  static constexpr int STRIKE_DELAY = 500;
   static constexpr int STRIKE_THR = 40;
   static constexpr int STRIKE_S_THR = 160;
   static constexpr int FLASH_DELAY = 15;

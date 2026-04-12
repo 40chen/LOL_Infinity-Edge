@@ -4,13 +4,14 @@
 #include <AudioBoard.h>
 #include <DriverPins.h>
 
-class SaberAudioDriver {
+class SelfAudioDriver {
 public:
-    SaberAudioDriver();
+    SelfAudioDriver();
     void begin();
     void play(const char* file);
     void loop();
     void setVolume(int volume);
+    bool isPlaying();
 
 private:
     Audio audio;

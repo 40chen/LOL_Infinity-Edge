@@ -22,27 +22,32 @@ void ImuDriver::begin() {
   }
 }
 
+/**
+ *  @brief 更新传感器数据
+ */
 void ImuDriver::update() {
-  // 控制读取频率 ≈ 50Hz（和你原来一致）
+  
+  // 控制读取频率
   if (millis() - lastUpdate < 20) return;
   lastUpdate = millis();
 
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  // 读取原始加速度和陀螺仪数据
+  mpu.getMotion6(&accel.x, &accel.y, &accel.z, &gyro.x, &gyro.y, &gyro.z);
 }
 
 float ImuDriver::getAccelMagnitude() {
   // 和你原代码保持一致的缩放方式
-  float x = abs(ax / 100.0f);
-  float y = abs(ay / 100.0f);
-  float z = abs(az / 100.0f);
+  float x = abs(accel.x / 100.0f);
+  float y = abs(accel.y / 100.0f);
+  float z = abs(accel.z / 100.0f);
 
   return sqrt(x * x + y * y + z * z);
 }
 
 float ImuDriver::getGyroMagnitude() {
-  float x = abs(gx / 100.0f);
-  float y = abs(gy / 100.0f);
-  float z = abs(gz / 100.0f);
+  float x = abs(gyro.x / 100.0f);
+  float y = abs(gyro.y / 100.0f);
+  float z = abs(gyro.z / 100.0f);
 
   return sqrt(x * x + y * y + z * z) / 2.0f;
 }

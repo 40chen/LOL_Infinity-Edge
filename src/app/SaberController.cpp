@@ -2,52 +2,65 @@
 #include "../../include/config.h"
 #include <Arduino.h>
 
-void SaberController::begin(ImuDriver* imuPtr, LedDriver* ledPtr, SaberAudioDriver* audioPtr, LightEffects* effectsPtr) {
-  // Store references to shared modules
-  imu = imuPtr;
-  led = ledPtr;
-  audio = audioPtr;
-  effects = effectsPtr;
+void SaberController::begin(ImuService* imuServicePtr, LedService* ledServicePtr, 
+                           AudioService* audioServicePtr) {
+  // 存储指向服务层的引用
+  imuService = imuServicePtr;
+  ledService = ledServicePtr;
+  audioService = audioServicePtr;
 
   Serial.println("Initializing Light Saber Logic...");
 
-  // Initialize color and effects
-  if (effects) {
-    effects->setColorByIndex(currentColor);
+  // 初始化颜色和效果
+  if (ledService) {
+    ledService->setColor(ColorMode::RED);  // 红色初始化
   }
 
-  // Play startup sound
-  if (audio) {
-    audio->play("saber.flac");
-  }
-
-  // Startup indicator
-  if (led) {
-    led->setColor(0, 255, 0); // Green
-    delay(500);
-    led->clear();
+  // 播放启动音
+  if (audioService) {
+    audioService->playStartup();
   }
 
   Serial.println("Light Saber Logic initialized");
 }
 
-void SaberController::update() {
-  if (!imu || !led || !audio || !effects) {
+void SaberController::tick() {
+  if (!imuService || !ledService || !audioService) {
     return;  // Not properly initialized
   }
 
-  imu->update();
-  audio->loop();
+  // 更新服务层
+  imuService->update();
+  audioService->loop();
+  ledService->update();
 
-  handleGesture();
-  handleSwing();
-  handleStrike();
-  handlePulse();
-  handleHum();
-
-  effects->update();
-
-  delay(10);
+  switch (state)
+  {
+  case SaberState::STARTING:
+    if (!audioService->isPlaying()) {
+      state = SaberState::ON;
+      audioService->setHumActive(true);  // 启动完成后激活hum
+      Serial.println("Saber state changed to ON, hum activated");
+    }
+    return;
+  case SaberState::STOPPING:
+    if (!audioService->isPlaying()) {
+      state = SaberState::OFF;
+      audioService->setHumActive(false);  // 确保hum已关闭
+      Serial.println("Saber state changed to OFF");
+    }
+    return;
+  case SaberState::OFF:
+    handleGesture(); // Still check for gesture to allow turning on
+    return;
+  case SaberState::ON:
+    handleGesture();
+    handleSwing();
+    handleStrike();
+    return;
+  default:
+    break;
+  }
 }
 
 void SaberController::setState(bool newState) {
@@ -63,132 +76,87 @@ bool SaberController::getState() const {
 }
 
 void SaberController::handleGesture() {
-  if (Config::GESTURE_ALLOW == 1) {
-    if (millis() - gestureTimer > 50) {
-      gestureTimer = millis();
+  if (!imuService) {
+    return;
+  }
 
-      float accX = (float)imu->getAx() / 2048.0;
-      float accY = (float)imu->getAy() / 2048.0;
-      float accZ = (float)imu->getAz() / 2048.0;
-
-      rolls[gesCounter & (Config::IMU_CAL_COUNTER - 1)] = atan2(accY, accZ) * 57.2974;
-      pitchs[gesCounter & (Config::IMU_CAL_COUNTER - 1)] = atan2(-accX, sqrt(accY * accY + accZ * accZ)) * 57.2974;
-
-      float rollMin = 10000, rollMax = -10000;
-      float pitchMin = 10000, pitchMax = -10000;
-
-      for (int i = 0; i < Config::IMU_CAL_COUNTER; i++) {
-        rollMin = rolls[i] < rollMin ? rolls[i] : rollMin;
-        rollMax = rolls[i] > rollMax ? rolls[i] : rollMax;
-        pitchMin = pitchs[i] < pitchMin ? pitchs[i] : pitchMin;
-        pitchMax = pitchs[i] > pitchMax ? pitchs[i] : pitchMax;
-      }
-
-      if (pitchMax - pitchMin > Config::OPEN_THR && countOpen == 0) {
-        toggleState();
-        countOpen = 40;
-        Serial.println("Gesture detected - triggering ON/OFF sequence");
-      }
-
-      gesCounter++;
-
-      if (countOpen > 0) countOpen--;
-    }
+  // 使用ImuService检测手势
+  if (imuService->detectGesture()) {
+    toggleState();
+    Serial.println("Gesture detected - triggering ON/OFF sequence");
   }
 }
 
-void SaberController::handleSwing() {
-  float gyr = imu->getGyroMagnitude();
+void SaberController::playSwingSound(float gyr) {
+  if (!audioService) {
+    return;
+  }
 
-  if (gyr > 60 && (millis() - swingTimeout > 100) && state == SaberState::ON &&
-      lightOnFlag == 0 && lightOffFlag == 0) {
+  if (gyr >= Config::SWING_THR) {
+    audioService->playFastSwing();
+  } else if (gyr < Config::SWING_THR && gyr > Config::SWING_L_THR) {
+    audioService->playSlowSwing();
+  } 
+}
 
-    swingTimeout = millis();
+void SaberController::handleSwing() { 
+  if (!imuService || !ledService || state != SaberState::ON) {
+    return; 
+  }
 
-    if ((millis() - swingTimer) > Config::SWING_TIMEOUT && swingFlag && !strikeFlag) {
-      byte number;
-      if (gyr >= Config::SWING_THR) {
-        number = (esp_random() % 7) * 2 + 1;
-        audio->play(swngs[number]);
-        humTimer = millis() - Config::HUM_TIMEOUT + 1000;
-        swingFlag = 0;
-        swingTimer = millis();
-        Serial.println("Fast swing detected! Playing fast swing sound");
-      } else if (gyr < Config::SWING_THR && gyr > Config::SWING_L_THR) {
-        number = (esp_random() % 8) * 2 + 1;
-        audio->play(swngs[number]);
-        humTimer = millis() - Config::HUM_TIMEOUT + 1000;
-        swingFlag = 0;
-        swingTimer = millis();
-        Serial.println("Slow swing detected! Playing slow swing sound");
-      }
-    }
+  // TODO: 考虑优先级队列来处理音效冲突
+  if (audioService->isPlaying()) {
+    return; // 如果音乐仍在播放，不触发挥动音效
+  }
+
+  // 使用ImuService检测挥动
+  if (imuService->detectSwing()) {
+    float swingIntensity = imuService->getSwingIntensity();
+    playSwingSound(swingIntensity);
+    ledService->playSwingAnimation();
   }
 }
 
 void SaberController::handleStrike() {
-  float acc = imu->getAccelMagnitude();
+  if (!imuService || !ledService || state != SaberState::ON) {
+    return; 
+  }
 
-  if ((acc > Config::STRIKE_THR) && (acc < Config::STRIKE_S_THR) &&
-      (millis() - strikeTimeout > 500) &&
-      state == SaberState::ON && lightOnFlag == 0 && lightOffFlag == 0) {
-
-    strikeTimeout = millis();
-    byte number = esp_random() % 10;
-    audio->play(clshCache[number]);
-    humTimer = millis() - Config::HUM_TIMEOUT + 1000;
-    effects->hit();
-    strikeFlag = 1;
+  // 使用ImuService检测敲击
+  if (imuService->detectStrike()) {
+    float strikeIntensity = imuService->getStrikeIntensity();
+    playStrikeSound(strikeIntensity);
+    ledService->playStrikeAnimation();
     Serial.println("Strike detected! Playing sound and lighting effect");
   }
 }
 
-void SaberController::handlePulse() {
-  if (Config::PULSE_ALLOW && state == SaberState::ON &&
-      (millis() - pulseTimer > Config::PULSE_DELAY) &&
-      lightOnFlag == 0 && lightOffFlag == 0 && hitFlag == 0) {
-
-    pulseTimer = millis();
-    pulseOffset = pulseOffset * k + map((esp_random() % 1024), 0, 1024, -Config::PULSE_AMPL, Config::PULSE_AMPL) * (1 - k);
-
-    if (currentColor == 0) pulseOffset = constrain(pulseOffset, -15, 5);
-
-    uint8_t r = constrain(effects->getCurrentRed() + pulseOffset, 0, 255);
-    uint8_t g = constrain(effects->getCurrentGreen() + pulseOffset, 0, 255);
-    uint8_t b = constrain(effects->getCurrentBlue() + pulseOffset, 0, 255);
-    led->setColor(r, g, b);
+void SaberController::playStrikeSound(float acc) {
+  if (!audioService) {
+    return;
   }
-}
-
-void SaberController::handleHum() {
-  if ((millis() - humTimer) > Config::HUM_TIMEOUT && bzzzFlag) {
-    audio->play("hum1.wav");
-    humTimer = millis();
-    swingFlag = 1;
-    strikeFlag = 0;
-    Serial.println("Hum sound playing");
-  }
+  audioService->playStrike();
 }
 
 void SaberController::toggleState() {
+  if (!ledService || !audioService) {
+    return;
+  }
+
   if (state == SaberState::OFF) {
-    // Turn ON
-    byte number = esp_random() % 2;
-    effects->setColorByIndex(currentColor);
-    audio->play(inCache[number]);
-    humTimer = millis() - Config::HUM_TIMEOUT + 2000;
-    effects->startLightOn();
-    state = SaberState::ON;
-    bzzzFlag = 1;
-    Serial.println("Light saber turned ON");
-  } else {
-    // Turn OFF
-    bzzzFlag = 0;
-    byte number = esp_random() % 2;
-    audio->play(outCache[number]);
-    humTimer = millis() - Config::HUM_TIMEOUT + 2000;
-    effects->startLightOff();
-    state = SaberState::OFF;
-    Serial.println("Light saber turned OFF");
+    // 开始打开灯光
+    ledService->setColor(ColorMode::RED);  // 红色
+    audioService->playTurnOn();
+    ledService->playTurnOnAnimation();
+    audioService->setHumActive(false);  // 暂时禁用，等待启动完成
+    state = SaberState::STARTING;
+    Serial.println("Light saber starting: state set to STARTING");
+  } else if (state == SaberState::ON) {
+    // 开始关闭灯光
+    audioService->setHumActive(false);  // 立即停止嗡鸣
+    audioService->playTurnOff();
+    ledService->playTurnOffAnimation();
+    state = SaberState::STOPPING;
+    Serial.println("Light saber stopping: state set to STOPPING");
   }
 }

@@ -1,11 +1,11 @@
-#include "SaberAudioDriver.h"
+#include "AudioDriver.h"
 #include "../../include/config.h"
 #include <Arduino.h>
 #include "SD_MMC.h"
 
-SaberAudioDriver::SaberAudioDriver() : board(nullptr) {}
+SelfAudioDriver::SelfAudioDriver() : board(nullptr) {}
 
-void SaberAudioDriver::begin() {
+void SelfAudioDriver::begin() {
   Serial.println("[Audio] Initializing...");
 
   // Configure I2C pins for codec
@@ -45,16 +45,23 @@ void SaberAudioDriver::begin() {
   Serial.println("[Audio] Initialization complete");
 }
 
-void SaberAudioDriver::play(const char* file) {
+void SelfAudioDriver::play(const char* file) {
   Serial.print("[Audio] Playing: ");
   Serial.println(file);
   audio.connecttoFS(SD_MMC, file);
 }
 
-void SaberAudioDriver::loop() {
+/**
+ * @brief 音频驱动的循环处理函数，负责维护音频播放状态和处理任何必要的更新
+ */
+void SelfAudioDriver::loop() {
   audio.loop();
 }
 
-void SaberAudioDriver::setVolume(int volume) {
+void SelfAudioDriver::setVolume(int volume) {
   audio.setVolume(volume);
+}
+
+bool SelfAudioDriver::isPlaying() {
+  return audio.isRunning();
 }

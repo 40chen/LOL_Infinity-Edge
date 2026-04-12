@@ -3,6 +3,10 @@
 #include "../drivers/LedDriver.h"
 #include "../../include/config.h"
 
+struct RGB {
+  uint8_t r, g, b;
+};
+
 class LightEffects {
 public:
   LightEffects(LedDriver& ledDriver);
@@ -17,6 +21,7 @@ public:
   uint8_t getCurrentRed() const { return currentRed; }
   uint8_t getCurrentGreen() const { return currentGreen; }
   uint8_t getCurrentBlue() const { return currentBlue; }
+  RGB getCurrentColor() const { return {currentRed, currentGreen, currentBlue}; }
 
 private:
   LedDriver& led;

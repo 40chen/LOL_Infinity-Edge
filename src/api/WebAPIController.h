@@ -1,18 +1,20 @@
 #pragma once
 
 #include <WebServer.h>
-#include <functional>
+
+class SaberController;
+class LedDriver;
+class ImuDriver;
 
 class WebAPIController {
 public:
   WebAPIController();
   
-  // Initialize with references to modules
+  // Initialize with direct object references
   void begin(WebServer* server,
-            std::function<void(bool)> saberStateCallback,
-            std::function<bool()> saberStateGetter,
-            std::function<void(uint8_t, uint8_t, uint8_t)> ledColorCallback,
-            std::function<void(float&, float&, float&)> imuDataGetter);
+            SaberController* saber,
+            LedDriver* led,
+            ImuDriver* imu);
 
 private:
   // HTTP request handlers
@@ -29,9 +31,8 @@ private:
 
   WebServer* server;
   
-  // Callbacks
-  std::function<bool()> saberStateGetter;
-  std::function<void(bool)> saberStateSetter;
-  std::function<void(uint8_t, uint8_t, uint8_t)> ledColorSetter;
-  std::function<void(float&, float&, float&)> imuDataGetter;
+  // Direct object references
+  SaberController* saber;
+  LedDriver* led;
+  ImuDriver* imu;
 };
