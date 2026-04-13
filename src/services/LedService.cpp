@@ -33,7 +33,6 @@ void LedService::update() {
     handleSwingAnimation(currentTime);
     return;
   }
-  handlePulse(currentTime);
 }
 
 // === 动画处理私有方法 ===
