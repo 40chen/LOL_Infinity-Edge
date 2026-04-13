@@ -3,8 +3,8 @@
 #include <WebServer.h>
 
 class SaberController;
-class LedDriver;
-class ImuDriver;
+class LedService;
+class ImuService;
 
 class WebAPIController {
 public:
@@ -13,8 +13,8 @@ public:
   // Initialize with direct object references
   void begin(WebServer* server,
             SaberController* saber,
-            LedDriver* led,
-            ImuDriver* imu);
+            LedService* ledService,
+            ImuService* imuService);
 
 private:
   // HTTP request handlers
@@ -33,6 +33,6 @@ private:
   
   // Direct object references
   SaberController* saber;
-  LedDriver* led;
-  ImuDriver* imu;
+  LedService* ledService;
+  ImuService* imuService;
 };

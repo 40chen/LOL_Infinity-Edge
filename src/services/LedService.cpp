@@ -235,12 +235,12 @@ void LedService::playStrikeAnimation() {
   Serial.println("LedService: Strike animation played");
 }
 
-void LedService::playSwingAnimation() {
-  if (!led) return;
+  void LedService::playSwingAnimation() {
+    if (!led) return;
 
-  // TODO: 需要定义 swing 的动画效果是什么
-  led->setColor(255, 255, 255); 
-  animationTimer = millis();
-  swingAnimationActive = true;
-  Serial.println("LedService: Swing animation played");
-}
+    // TODO: 需要定义 swing 的动画效果是什么
+    led->setColor(255, 255, 255); 
+    animationTimer = millis();
+    swingAnimationActive = true;
+    Serial.println("LedService: Swing animation played");
+  }

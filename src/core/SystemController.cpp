@@ -36,7 +36,7 @@ void SystemController::begin() {
 
   Serial.println("Setting up HTTP API endpoints...");
   // Initialize Web API with direct object references
-  webAPI.begin(&server, &saber, &led, &imu);
+  webAPI.begin(&server, &saber, &ledService, &imuService);
 
   Serial.println("===== System initialized successfully =====\n");
 }

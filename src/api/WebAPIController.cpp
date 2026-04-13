@@ -1,19 +1,19 @@
 #include "WebAPIController.h"
 #include "../app/SaberController.h"
-#include "../drivers/LedDriver.h"
-#include "../drivers/ImuDriver.h"
+#include "../services/LedService.h"
+#include "../services/ImuService.h"
 #include <Arduino.h>
 
-WebAPIController::WebAPIController() : server(nullptr), saber(nullptr), led(nullptr), imu(nullptr) {}
+WebAPIController::WebAPIController() : server(nullptr), saber(nullptr), ledService(nullptr), imuService(nullptr) {}
 
 void WebAPIController::begin(WebServer* webServer,
                             SaberController* saberController,
-                            LedDriver* ledDriver,
-                            ImuDriver* imuDriver) {
+                            LedService* ledServicePtr,
+                            ImuService* imuServicePtr) {
   server = webServer;
   saber = saberController;
-  led = ledDriver;
-  imu = imuDriver;
+  ledService = ledServicePtr;
+  imuService = imuServicePtr;
   
   // Register all HTTP routes
   server->on("/", HTTP_GET, [this]() { handleRoot(); });
@@ -56,13 +56,12 @@ void WebAPIController::setLedColor() {
     uint8_t r = server->arg("r").toInt();
     uint8_t g = server->arg("g").toInt();
     uint8_t b = server->arg("b").toInt();
-    
-    if (led) {
-      led->setColor(r, g, b);
+    if (ledService) {
+      ledService->setColor(r, g, b);
       String response = "{\"success\":true,\"color\":{\"r\":" + String(r) + ",\"g\":" + String(g) + ",\"b\":" + String(b) + "}}";
       server->send(200, "application/json", response);
     } else {
-      server->send(500, "application/json", "{\"error\":\"LED driver not configured\"}");
+      server->send(500, "application/json", "{\"error\":\"LED service not configured\"}");
     }
   } else {
     server->send(400, "application/json", "{\"error\":\"Missing or invalid parameters\"}");
@@ -70,16 +69,15 @@ void WebAPIController::setLedColor() {
 }
 
 void WebAPIController::getIMUData() {
-  if (imu) {
-    const auto& accel = imu->getAccel();
+  if (imuService) {
+    const auto& accel = imuService->getAccel();
     float x = static_cast<float>(accel.x) / 2048.0f;
     float y = static_cast<float>(accel.y) / 2048.0f;
     float z = static_cast<float>(accel.z) / 2048.0f;
-    
     String response = "{\"imu\":{\"x\":" + String(x, 2) + ",\"y\":" + String(y, 2) + ",\"z\":" + String(z, 2) + "}}";
     server->send(200, "application/json", response);
   } else {
-    server->send(500, "application/json", "{\"error\":\"IMU driver not configured\"}");
+    server->send(500, "application/json", "{\"error\":\"IMU service not configured\"}");
   }
 }
 
